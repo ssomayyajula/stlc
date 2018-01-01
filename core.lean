@@ -1,4 +1,4 @@
-def var := string
+def var := ℕ
 
 -- The AST of terms in STLC
 inductive term
