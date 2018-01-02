@@ -8,6 +8,7 @@ def fv : term → set var
 
 -- e' = e{v/x}
 inductive is_subst : term → term → term → var → Prop
+| unit (x : var) (e : term) : is_subst term.unit term.unit e x
 -- e = x{e/x}
 | same_var (x : var) (e : term) : is_subst e (term.var x) e x
 -- y = y{e/x}, y ≠ x

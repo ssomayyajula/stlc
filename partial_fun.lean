@@ -9,6 +9,9 @@ def emptyf : partial_fun α β
 instance : has_emptyc (partial_fun α β) :=
 ⟨emptyf⟩
 
+def dom (f : partial_fun α β) : set α :=
+λ x, ∃ τ, f x = some τ
+
 variable [decidable_eq α]
 
 -- Destructive addition to a context
@@ -27,3 +30,15 @@ by unfold extend; simp
 lemma extend_diff (f : partial_fun α β) {x x' : α} (y : β) :
   x' ≠ x → extend f x y x' = f x' :=
 by intro h; unfold extend; simp [h]
+
+/-instance {f : partial_fun α β} {a} : decidable (∃ b, f a = some b) :=
+begin
+  cases f a with b,
+  
+  left, intro h,
+  cases h,
+  contradiction,
+
+  right, existsi b, refl
+end-/
+

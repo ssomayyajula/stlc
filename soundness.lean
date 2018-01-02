@@ -61,50 +61,95 @@ end
 lemma well_typed_halts_is_value {e : term} {τ : type} : well_typed e τ → halts e → is_value e :=
 λ t, or.resolve_right (progress rfl t)
 
-lemma subst_lemma {x : var} {e e' es : term} {τ τ' : type} :
-  well_typed_under (extend emptyf x τ') e τ → well_typed e' τ' → is_subst es e e' x → well_typed es τ :=
-begin
-  intros te te' is,
-  induction is,
+/-lemma weakening {Γ : ctx} {e : term} {τ : type} {x : var} :
+  well_typed_under Γ e τ → x ∉ dom Γ → extend Γ -/
 
-  -- Trivial, since e is already well-typed
-  case is_subst.same_var
-  { cases te, simp at a,
-    injection a with h,
-    rw ←h, assumption },
+lemma subst_lemma {x : var} {e e' es : term} {τ τ' : type} {Γ : ctx} :
+  Γ = extend emptyf x τ' → well_typed_under Γ e τ → well_typed e' τ' → is_subst es e e' x → well_typed es τ :=
+begin
+  intros g te te' is,
+  induction te generalizing es,
+
+  case well_typed_under.unit
+  { cases is, apply well_typed_under.unit },
+
+  case well_typed_under.var _ _ _ h
+  { rw g at *,
+    cases is,
+    
+    case is_subst.same_var
+    { rw extend_same at h,
+      injection h with h',
+      rw ←h',
+      assumption },
+    
+    case is_subst.diff_var neq
+    { rw extend_diff _ _ neq at h,
+      contradiction } },
   
-  -- Impossible, the context doesn't have y
-  case is_subst.diff_var x _ _ h
-  { cases te,
-    rw [←extend_eta, extend_diff emptyf τ' h] at a,
-    contradiction },
+  case well_typed_under.app _ _ _ _ _ _ _ ih₁ ih₂
+  { cases is,
+    
+    case is_subst.app
+    { let := ih₁ _ _,
+      let := ih₂ _ _,
+      apply well_typed_under.app,
+      repeat { assumption } } },
   
-  -- WTF
-  case is_subst.app _ _ _ _ _ x
-  { cases te,
-    rw ←extend_eta at a_3 a_2,
-    simp at a_3 a_2,
-    --let := ih_2 a_3,
-    admit,
-   },
-  
-  case is_subst.abs 
-  {
-      cases te,
-      rw ←extend_eta at a_3,
-      simp at a_3 a_2,
+  case well_typed_under.abs _ _ _ _ _ _ ih
+  { rw g at *,
+    cases is,
+    case is_subst.abs _ neq nfv
+    {
+      --let h := ih sorry a_3,
+      --apply well_typed_under.abs,
+      --assumption
       admit
-  }
+    } }
+end
+
+lemma has_unique_type {Γ : ctx} {e : term} {τ τ' : type} :
+  well_typed_under Γ e τ → well_typed_under Γ e τ' → τ = τ' :=
+begin
+  intros t t',
+  /-induction t generalizing τ',
+  
+  cases t',
+  refl,
+
+  cases t',
+  injection eq.trans a.symm a_1,
+
+  
+  let := ih_1 a,-/
+  --induction e generalizing Γ τ τ',
+  --cases t, cases t',
+  --injection eq.trans a_1.symm a_2,
+
+  --cases t, cases t',
+  --let := ih_1 a_3 a_3,
+  admit
 end
 
 lemma E_lemma {E : E} {e e' : term} {τ τ' : type} :
-  well_typed_under emptyf (E e) τ → well_typed_under emptyf e τ' → well_typed_under emptyf e' τ' →
-  well_typed (E e') τ :=
+  well_typed (E e) τ → well_typed e τ' → well_typed e' τ' → well_typed (E e') τ :=
 begin
   intros tEe te te',
-  --induction E,
-  --simp [show E.hole e = e, from rfl,show E.hole e' = e', from rfl] at *,
-  admit
+  --induction tEe,
+  
+  induction E generalizing τ,
+  
+  
+  /-cases tEe,
+  let := ih_1 a_2,
+  apply well_typed_under.app,
+  repeat {assumption},
+  
+  cases a,
+  cases tEe,
+  let := ih_1 a_2,
+  apply well_typed_under.app,
+  repeat {assumption},-/
 end
 
 lemma typing_hole {E : E} {e : term} {τ : type} :
@@ -117,10 +162,14 @@ begin
   { existsi τ, assumption },
 
   case E.app_left _ _ ih
-  { cases t, exact ih a_2 },
+  { cases t,
+    case well_typed_under.app _ h
+    { exact ih h } },
 
   case E.app_right v _ ih
-  { cases v, cases t, exact ih a_2 }
+  { cases v, cases t,
+    case well_typed_under.app _ _ h
+    { exact ih h } }
 end
 
 lemma preservation {e e' : term} {τ : type} :
@@ -130,8 +179,9 @@ begin
   induction s generalizing τ,
   
   case step.beta
-  { cases t, cases a_2,
-    apply subst_lemma,
+  { cases t,
+    cases a_2,
+    apply subst_lemma rfl,
     repeat { assumption } },
   
   case step.context _ _ _ _ ih
@@ -155,4 +205,55 @@ begin
   -- Ironically, the inductive step is easier...
   case rtc.trans _ _ _ s _ ih
   { exact ih (preservation t s) h }
+end
+
+instance {e : term} : decidable (∃ Γ τ, well_typed_under Γ e τ) :=
+begin
+  induction e,
+
+  case term.unit {
+    right, existsi [emptyf, type.unit],
+    apply well_typed_under.unit
+  },
+
+  case term.var x {
+    right, existsi [extend emptyf x type.unit, type.unit],
+    apply well_typed_under.var,
+    unfold extend, simp
+  },
+
+  case term.app e₁ e₂ ih₁ ih₂ {
+    cases ih₁ with n₁ y₁,
+
+    left, intro h,
+    cases h with Γ h, cases h with τ te₁,
+    cases te₁,
+    exact n₁ ⟨Γ, type.func τ_1 τ, a⟩,
+
+    cases ih₂ with n₂ y₂,
+
+    left, intro h,
+    cases h with Γ h, cases h with τ te₂,
+    cases te₂,
+    exact n₂ ⟨Γ, τ_1, a_1⟩,
+
+    right, cases y₁ with Γ₁ y₁, cases y₂ with Γ₂ y₂,
+    cases y₁ with τ₁ te₁, cases y₂ with τ₂ te₂,
+    cases τ₁,
+    
+    --existsi [emptyf, type.func τ₁ τ₂],
+    --apply well_typed_under.app,
+
+  }
+
+  /-case term.abs _ _ ih {
+    cases ih with n y,
+
+    left, intro h,
+    cases h with _ t,
+    cases t,
+    
+  }-/
+
+
 end
