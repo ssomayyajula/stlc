@@ -28,7 +28,7 @@ inductive step : term → term → Prop
 | beta {x : var} {e v e' : term}  :
     is_value v → is_subst e' e v x → step (term.app (term.abs x e) v) e'
 
-notation e `⇝` e' := step e e'
+notation e `⇝`:35 e' := step e e'
 
 -- reflexive transitive closure
 inductive rtc {α} (r : α → α → Prop) : α → α → Prop
@@ -36,6 +36,6 @@ inductive rtc {α} (r : α → α → Prop) : α → α → Prop
 | trans : ∀ {a b c}, r a b → rtc b c → rtc a c
 
 def many_steps := rtc step
-notation e `⇝*` e' := many_steps e e'
+notation e `⇝*`:35 e' := many_steps e e'
 
 def halts e := ¬∃ e', step e e'
