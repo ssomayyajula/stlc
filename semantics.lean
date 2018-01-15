@@ -1,9 +1,9 @@
-import .core
+import .syntax
 
 def fv : term → set var
 | (term.var x)     := {x}
 | (term.app e₁ e₂) := fv e₁ ∪ fv e₂
-| (term.abs x e)   := fv e \ {x}
+| (term.abs x _ e)   := fv e \ {x}
 | term.unit        := ∅
 
 -- e' = e{v/x}
@@ -17,16 +17,16 @@ inductive is_subst : term → term → term → var → Prop
 | app {e₁ e₂ e e₁' e₂' : term} {x : var} :
     is_subst e₁' e₁ e x → is_subst e₂' e₂ e x → is_subst (term.app e₁' e₂') (term.app e₁ e₂) e x
 -- λ y, e₁{e₂/x} = (λ y, e₁){e₂/x}, y ≠ x, y ∉ fv e₂
-| abs {x y : var} {e₁ e₂ e₁' : term} :
-    y ≠ x → y ∉ fv e₂ → is_subst e₁' e₁ e₂ x → is_subst (term.abs y e₁') (term.abs y e₁) e₂ x
+| abs {x y : var} {τ : type} {e₁ e₂ e₁' : term} :
+    y ≠ x → y ∉ fv e₂ → is_subst e₁' e₁ e₂ x → is_subst (term.abs y τ e₁') (term.abs y τ e₁) e₂ x
 
 def subst (e v : term) (x : var) : {e' // is_subst e' e v x} := sorry
 
 inductive step : term → term → Prop
 | context {e e' : term} (E : E) :
     step e e' → step (E e) (E e')
-| beta {x : var} {e v e' : term}  :
-    is_value v → is_subst e' e v x → step (term.app (term.abs x e) v) e'
+| beta {x : var} {τ : type} {e v e' : term}  :
+    is_value v → is_subst e' e v x → step (term.app (term.abs x τ e) v) e'
 
 notation e `⇝`:35 e' := step e e'
 

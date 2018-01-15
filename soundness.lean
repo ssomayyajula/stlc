@@ -43,7 +43,7 @@ begin
     apply step.context, assumption,
 
     -- If both are values, then it β-reduces
-    cases e₁_iv with x e,
+    cases e₁_iv with x _ e,
     cases subst e e₂ x with e',
     existsi e',
     apply step.beta, repeat { assumption },
